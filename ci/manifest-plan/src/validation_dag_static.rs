@@ -2195,7 +2195,16 @@ pub(super) const NEXTEST_EXPECTED_COUNTS: &[(&str, u64)] = &[
     // and scheduler::test::a_call_that_begins_with_a_scheduler_signal_waiting_is_armed
     // (https://github.com/rrnewton/hermit/issues/4234): 1636, run.
     // And +1 from 98cd5052: 1637.
-    ("test.detcore_unit", 1637),
+    // And the ten scheduler tests of the polled FIFO open
+    // (https://github.com/rrnewton/hermit/issues/2203: nothing_else_can_run_beside_*,
+    // a_guest_poller_that_has_not_retried_*, a_guest_poller_whose_last_attempt_*,
+    // a_poll_grant_that_moved_data_*, a_poll_grant_whose_next_request_*,
+    // an_upgraded_retry_is_still_fruitless, a_poller_a_host_can_satisfy_*,
+    // a_thread_neither_queued_nor_parked_*, a_fifo_open_beside_a_sleeper_*,
+    // a_fifo_open_beside_an_indefinite_wait_*) and
+    // fifo_peer::tests::a_staging_page_goes_below_the_highest_mapping_with_room:
+    // 1648, by listing.
+    ("test.detcore_unit", 1648),
     // tight_stack_openat::openat_succeeds_without_writable_stack_below_rsp
     // retains all 27 prior selected identities under the unchanged skip filters
     // (measured 28; https://github.com/rrnewton/hermit/issues/3328).
@@ -3074,7 +3083,15 @@ pub(super) const NEXTEST_EXPECTED_COUNTS: &[(&str, u64)] = &[
     // And hermit_run_dap_listen_serves_a_run_config: 411.
     // And a_claimed_sigchld_survives_another_signal_and_a_dropped_copy
     // (https://github.com/rrnewton/hermit/issues/4346): 412, listed.
-    ("test.cli", 412),
+    // And a_blocking_fifo_open_waits_for_its_peer_without_holding_the_turn,
+    // a_signal_ends_a_blocking_fifo_open_as_on_linux,
+    // a_blocking_fifo_open_completes_on_the_fifo_it_found,
+    // a_blocking_fifo_open_beside_a_pipeline_waits_for_its_writer,
+    // a_blocking_fifo_open_with_a_host_peer_completes_as_on_linux,
+    // a_blocking_fifo_open_completes_for_a_guest_that_cannot_reach_the_tracer and
+    // a_blocking_fifo_open_leaves_nothing_in_the_guest
+    // (https://github.com/rrnewton/hermit/issues/2203): 419, by listing.
+    ("test.cli", 419),
     // sabre_and_ptrace_detlogs_agree_through_post_exec and
     // detlog_records_drop_only_the_timestamp_and_suffix retain all 7 prior
     // identities.
@@ -3414,7 +3431,8 @@ pub(super) const NEXTEST_EXPECTED_COUNTS: &[(&str, u64)] = &[
     // And the guest-symlink test: 346.
     // And the run-config test: 347.
     // And the claim-fault SIGCHLD test (https://github.com/rrnewton/hermit/issues/4346): 348, listed.
-    ("test.cli_on_host", 348),
+    // And the seven blocking FIFO open tests: 355, by listing.
+    ("test.cli_on_host", 355),
     ("test.hermit_modes_on_host", 21),
     ("privileged-only-test.pmu_buck_chaos_cases", 6),
     // run_kvm_futex_wait_on_an_unreadable_word_matches_linux
@@ -3637,7 +3655,9 @@ pub(super) const NEXTEST_EXPECTED_COUNTS: &[(&str, u64)] = &[
     // And +7 from bd38bb81: 1631.
     // And the five last-band poller and waiting-signal tests: 1636.
     // And +1 from 98cd5052: 1637.
-    ("test.detcore_unit_on_host", 1637),
+    // And the ten polled-FIFO-open scheduler tests and the staging-address
+    // test: 1648.
+    ("test.detcore_unit_on_host", 1648),
     // Host variants select the same proc regressions and retain prior identities.
     // The host twin also selects the two clock_passthrough tests
     // (https://github.com/rrnewton/hermit/issues/1176).

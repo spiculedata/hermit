@@ -1510,7 +1510,9 @@ pub(super) const NEXTEST_EXPECTED_COUNTS: &[(&str, u64)] = &[
     // (https://github.com/rrnewton/hermit/issues/4234): 1050, run.
     // And host_base_env_keeps_hermits_own_variables_from_the_guest
     // (hermit run --dap-listen): 1051.
-    ("test.hermit_unit", 1051),
+    // And metadata::tests::record_version_rejects_streams_from_before_fixed_directory_sizes
+    // (https://github.com/rrnewton/hermit/issues/4162): 1052, run.
+    ("test.hermit_unit", 1052),
     // Fifteen stage-two child-publication controls retain all 728 prior IDs.
     // Five resource-limit controls retain all 743 prior identities.
     // Three descriptor-import error controls retain all 780 prior identities.
@@ -3071,7 +3073,10 @@ pub(super) const NEXTEST_EXPECTED_COUNTS: &[(&str, u64)] = &[
     // And hermit_run_dap_listen_serves_a_run_config: 411.
     // And a_claimed_sigchld_survives_another_signal_and_a_dropped_copy
     // (https://github.com/rrnewton/hermit/issues/4346): 412, listed.
-    ("test.cli", 412),
+    // And a_directory_reports_one_block_whatever_it_holds and
+    // entries_added_outside_a_run_leave_verify_strict_parity
+    // (https://github.com/rrnewton/hermit/issues/4162): 414.
+    ("test.cli", 414),
     // sabre_and_ptrace_detlogs_agree_through_post_exec and
     // detlog_records_drop_only_the_timestamp_and_suffix retain all 7 prior
     // identities.
@@ -3411,7 +3416,8 @@ pub(super) const NEXTEST_EXPECTED_COUNTS: &[(&str, u64)] = &[
     // And the guest-symlink test: 346.
     // And the run-config test: 347.
     // And the claim-fault SIGCHLD test (https://github.com/rrnewton/hermit/issues/4346): 348, listed.
-    ("test.cli_on_host", 348),
+    // And the two directory-size tests: 350.
+    ("test.cli_on_host", 350),
     ("test.hermit_modes_on_host", 21),
     ("privileged-only-test.pmu_buck_chaos_cases", 6),
     // run_kvm_futex_wait_on_an_unreadable_word_matches_linux
@@ -3837,7 +3843,8 @@ pub(super) const NEXTEST_EXPECTED_COUNTS: &[(&str, u64)] = &[
     // And +1 from f4e27a59: 1049.
     // And the armed-waiting-signal record-epoch test: 1050.
     // And the host-environment test for hermit run --dap-listen: 1051.
-    ("test.hermit_unit_on_host", 1051),
+    // And the fixed-directory-size record-version test: 1052.
+    ("test.hermit_unit_on_host", 1052),
     ("test.ignored_syscall_regressions_on_host", 4),
     // The host node carries the identical selection.
     // test-harness no_retry_flag_turns_framework_retries_off retains all 763 prior identities.

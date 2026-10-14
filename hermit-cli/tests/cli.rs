@@ -156,6 +156,7 @@ static FUTEX_REWAIT_CHANGED_WORD_GUEST: OnceLock<PathBuf> = OnceLock::new();
 static TIMER_SIGNAL_MASKED_THREAD_GUEST: OnceLock<PathBuf> = OnceLock::new();
 static CHAOS_LAST_BAND_ADMISSION_GUEST: OnceLock<PathBuf> = OnceLock::new();
 static YIELD_LOOP_WAIT_GUEST: OnceLock<PathBuf> = OnceLock::new();
+static DIRECTORY_SIZE_GUEST: OnceLock<PathBuf> = OnceLock::new();
 static LAST_BAND_BACKGROUND_CALL_GUEST: OnceLock<PathBuf> = OnceLock::new();
 static SCHEDULER_SIGNAL_WAITING_GUEST: OnceLock<PathBuf> = OnceLock::new();
 static SIGNAL_WAITING_BESIDE_BACKGROUND_GUEST: OnceLock<PathBuf> = OnceLock::new();
@@ -30644,6 +30645,120 @@ fn a_yield_loop_waiting_for_a_finished_call_verifies_under_chaos() {
     .expect("the verify verdict is not JSON");
     assert_eq!(report["verdict"], "matched", "{report}");
     assert_eq!(report["bitwise_parity"], true, "{report}");
+}
+
+/// A directory reports one 4096-byte block (st_size 4096, st_blocks 8),
+/// whatever it holds and whatever file system it is on; the host's value
+/// changes whenever an entry is added or removed, and differs between file
+/// systems (btrfs reports an empty directory as 0 and sums its names'
+/// lengths). A procfs directory keeps the host's 0
+/// (https://github.com/rrnewton/hermit/issues/4162).
+#[test]
+fn a_directory_reports_one_block_whatever_it_holds() {
+    let guest = futex_c_guest(&DIRECTORY_SIZE_GUEST, "directory_size")
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let directory = tempfile::tempdir_in(env!("CARGO_TARGET_TMPDIR")).unwrap();
+    let watched = directory.path().join("grown");
+    fs::create_dir(&watched).unwrap();
+    let watched_arg = watched.to_str().unwrap().to_owned();
+    let (status, log) = run_with_deadline(
+        hermit_command(&[
+            "run",
+            "--strict",
+            "--",
+            guest.as_str(),
+            "grow",
+            watched_arg.as_str(),
+        ]),
+        directory.path(),
+        Duration::from_secs(60),
+        false,
+    );
+    let stdout = fs::read_to_string(directory.path().join("deadline-run.stdout"))
+        .expect("failed to read the guest's stdout");
+    assert_eq!(
+        status.and_then(|status| status.code()),
+        Some(0),
+        "the run must exit 0:\nstdout:\n{stdout}\nstderr:\n{log}"
+    );
+    assert_eq!(stdout, "dir 4096 then 4096, blocks 8; /proc 0\n");
+}
+
+/// Entries another process adds to and removes from a directory while the
+/// guest stats it leave `--verify --verify-strict` at bitwise parity: the
+/// guest's view of the directory's size no longer follows the host's. Builds
+/// stat every ancestor of their working directory, and the host's value
+/// failed verification of ordinary builds on a shared machine
+/// (https://github.com/rrnewton/hermit/issues/4162).
+#[test]
+fn entries_added_outside_a_run_leave_verify_strict_parity() {
+    let guest = futex_c_guest(&DIRECTORY_SIZE_GUEST, "directory_size")
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let directory = tempfile::tempdir_in(env!("CARGO_TARGET_TMPDIR")).unwrap();
+    let watched = directory.path().join("busy");
+    fs::create_dir(&watched).unwrap();
+    let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let churn = {
+        let watched = watched.clone();
+        let stop = stop.clone();
+        std::thread::spawn(move || {
+            let mut rounds = 0u64;
+            while !stop.load(std::sync::atomic::Ordering::Relaxed) {
+                let entry = watched.join(format!("outside-entry-{}", rounds % 32));
+                fs::write(&entry, b"x").unwrap();
+                if rounds.is_multiple_of(3) {
+                    fs::remove_file(&entry).unwrap();
+                }
+                rounds += 1;
+            }
+            rounds
+        })
+    };
+    let verdict = directory.path().join("verify.json");
+    let verdict_arg = verdict.to_str().unwrap().to_owned();
+    let watched_arg = watched.to_str().unwrap().to_owned();
+    let (status, log) = run_with_deadline(
+        hermit_command(&[
+            "run",
+            "--strict",
+            "--verify",
+            "--verify-strict",
+            "--verify-json",
+            verdict_arg.as_str(),
+            "--",
+            guest.as_str(),
+            "watch",
+            watched_arg.as_str(),
+            "2000",
+        ]),
+        directory.path(),
+        Duration::from_secs(120),
+        false,
+    );
+    stop.store(true, std::sync::atomic::Ordering::Relaxed);
+    let rounds = churn.join().unwrap();
+    let stdout = fs::read_to_string(directory.path().join("deadline-run.stdout"))
+        .expect("failed to read the guest's stdout");
+    assert!(rounds > 100, "the outside writer ran only {rounds} rounds");
+    assert_eq!(
+        status.and_then(|status| status.code()),
+        Some(0),
+        "the run must verify and exit 0:\nstdout:\n{stdout}\nstderr:\n{log}"
+    );
+    let report: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string(&verdict).expect("failed to read the verify verdict"),
+    )
+    .expect("the verify verdict is not JSON");
+    assert_eq!(report["verdict"], "matched", "{report}");
+    assert_eq!(report["bitwise_parity"], true, "{report}");
+    assert!(
+        stdout.ends_with("watched 2000 times; size 4096\n"),
+        "{stdout:?}"
+    );
 }
 
 /// A yield loop beside a call that only the yielder or an alarm can end

@@ -5969,6 +5969,30 @@ impl<T: RecordOrReplay> Detcore<T> {
         // device id.
         stat.dev = determinize_device(guest, stat.dev).await;
 
+        // A directory's size is whatever its file system makes of its
+        // entries: btrfs sums the names' lengths, tmpfs counts entries, ext4
+        // rounds up to its blocks. So it changes whenever any process adds or
+        // removes an entry, and differs between file systems. Builds stat
+        // every ancestor of their working directory (kbuild, configure,
+        // cargo, CMake's look at $HOME), so the host's value broke
+        // `--verify --verify-strict` of ordinary builds on a shared machine
+        // and reproducibility across hosts
+        // (https://github.com/rrnewton/hermit/issues/4162). Report one
+        // 4096-byte block, as ext4 does for a small directory, whatever the
+        // directory holds; btrfs reports an empty directory as 0, so even
+        // an empty one is set. A procfs directory keeps the host's value, 0
+        // for every one, which Detcore can tell (`ProcfsEntry`); sysfs and
+        // cgroup directories, which Linux also reports as 0, report 4096.
+        if stat.mode & libc::S_IFMT == libc::S_IFDIR
+            && stat.mask.contains(StatxMask::STATX_SIZE)
+            && !procfs.is_procfs()
+        {
+            stat.size = 4096;
+            if stat.mask.contains(StatxMask::STATX_BLOCKS) {
+                stat.blocks = 8;
+            }
+        }
+
         let epoch_tp = Timespec {
             tv_sec: cfg.epoch.timestamp(),
             tv_nsec: cfg.epoch.timestamp_subsec_nanos() as i64,

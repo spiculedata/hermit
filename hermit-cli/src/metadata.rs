@@ -511,7 +511,13 @@ impl RecordVersion {
 // at a fixed point (https://github.com/rrnewton/hermit/issues/4234). Under
 // record it was readmitted through the rejoin log instead, so an older
 // recording would replay with that call rejoining at another turn.
-pub(crate) const RECORD_VERSION: RecordVersion = RecordVersion(0x154);
+// 0x154 -> 0x155 (taken at land time, as the reservation file's land-time
+// numbering rule gives a ready change HIGHEST_SHIPPED + 1): a directory's
+// st_size and st_blocks report one 4096-byte block, not the host's values
+// (https://github.com/rrnewton/hermit/issues/4162). Replay stats the host's
+// files again and determinizes the result, so an older recording would replay
+// with directory sizes its run did not see.
+pub(crate) const RECORD_VERSION: RecordVersion = RecordVersion(0x155);
 
 /// The highest RECORD_VERSION this project has ever shipped.
 ///
@@ -536,7 +542,7 @@ pub(crate) const RECORD_VERSION: RecordVersion = RecordVersion(0x154);
 /// the version exists to prevent.
 ///
 /// RAISE THIS IN THE SAME COMMIT THAT RAISES RECORD_VERSION.
-const HIGHEST_SHIPPED_RECORD_VERSION: u32 = 0x154;
+const HIGHEST_SHIPPED_RECORD_VERSION: u32 = 0x155;
 
 const _: () = assert!(
     RECORD_VERSION.0 >= HIGHEST_SHIPPED_RECORD_VERSION,
@@ -1507,6 +1513,13 @@ mod tests {
     #[test]
     fn record_version_rejects_streams_from_before_armed_waiting_signal_calls() {
         assert!(!RECORD_VERSION.compatible_with(&RecordVersion(0x153)));
+    }
+
+    /// A recording older than 0x155 saw the host's directory sizes
+    /// (https://github.com/rrnewton/hermit/issues/4162).
+    #[test]
+    fn record_version_rejects_streams_from_before_fixed_directory_sizes() {
+        assert!(!RECORD_VERSION.compatible_with(&RecordVersion(0x154)));
     }
 
     #[test]
